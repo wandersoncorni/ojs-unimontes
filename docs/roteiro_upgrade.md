@@ -50,13 +50,50 @@ Vantagens da abordagem:
     mysqdump -u root > /opt/ojs-portal/ojs_34.sql
     ```
 
-## 2. Criar os containers da stack
+## 3. Criar os containers da stack
 
 ```mermaid
     flowchart TD
-        A@{ shape: cloud, label: "Internet" }  --> B
-        B[NGinx] --> C[OJS]
-        C --> D[MySQL]
+    A@{ shape: cloud, label: "Internet" } --> B
+
+    subgraph Host ["Hospedeiro Docker"]
+
+        subgraph Nginx [" "]
+            B[NGinx] 
+            B<-.-> WAF{{"🛡️ ModSecurity"}}
+        end
+
+        B --> C
+
+        subgraph Web [" "]
+            C[OJS]           
+            C <-.-> V1["📁 ./files"]
+            C <-.-> V2["📁 ./public"]
+        end
+
+        C --> D[(MySQL)]     
+    end
+
+```
+Descrição:
+1. NGinx: proxy reverso e WAF (modesecurity);
+2. OJS: servidor WEB;
+3. MySQL: banco de dados
+
+## 4. Preparar o upgrade
+1. Colocar o portal em manutenção
+2. Ajustar a configuração da nova versão para ***installed = Off***
+3. Copiar o banco de dados
+4. Sanitizar os dados do banco
+5. Copiar os arquivos
+6. Subir os containers e apontar o banco de dados cópia e o diretório cópia
+7. Executar o script de upgrade
+```shell
+php tools/upgrade.php upgrade
 ```
 
-## 3. Resturação do backup 
+## 5. Pós-atualização
+* Reinstalar e validar plugins
+* Limpar caches
+* Fazer backup da nova versão
+* Liberar o acesso e monitorar
